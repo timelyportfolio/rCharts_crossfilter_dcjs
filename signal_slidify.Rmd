@@ -46,7 +46,10 @@ text-indent: 100px;
 ## With Help from [R](http://r-project.org) and [slidify](http://slidify.org)
 
 <div class = "row">
-  <div id = "bar-count" class = "span4"><h3>Signal Histogram</h3></div>
+  <div id = "bar-count" class = "span4">
+    <h3>Signal Histogram</h3>
+    <strong><span class="filter"></span></strong>
+  </div>
   <div id = "line-perf" class = "span4"><h3>Avg Return By Signal</h3></div>
   <div id = "line-year" class = "span4"><h3>Count By Year</h3></div>
 </div>
@@ -148,6 +151,11 @@ dc.barChart("#bar-count")
         //.valueAccessor(function(p){return p.value.count;})
         .x(d3.scale.linear().domain([0, 100]))
         .y(d3.scale.linear().domain([0, 500]))
+        .filterPrinter(function (filters) {
+            var filter = filters[0], s = "RSI filter: ";
+            s += Math.round(filter[0]) + " -> " + Math.round(filter[1]);
+            return s;
+        })        
         .centerBar(true);
         
 dc.barChart("#line-perf")
