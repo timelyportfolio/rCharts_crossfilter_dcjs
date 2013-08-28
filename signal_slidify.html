@@ -82,7 +82,8 @@ text-indent: 100px;
 
 <div class = "row">
   <div id = "bar-count" class = "span4">
-    <h3>Signal Histogram</h3><strong><span class="filter"></span></strong>
+    <h3>Signal Histogram</h3>
+    <strong><span class="filter"></span></strong>
   </div>
   <div id = "line-perf" class = "span4"><h3>Avg Return By Signal</h3></div>
   <div id = "line-year" class = "span4"><h3>Count By Year</h3></div>
@@ -112277,10 +112278,8 @@ dc.barChart("#bar-count")
         .x(d3.scale.linear().domain([0, 100]))
         .y(d3.scale.linear().domain([0, 500]))
         .filterPrinter(function (filters) {
-            console.log(filters[0]);
             var filter = filters[0], s = "RSI filter: ";
             s += Math.round(filter[0]) + " -> " + Math.round(filter[1]);
-            console.log(s);
             return s;
         })        
         .centerBar(true);
@@ -112288,7 +112287,7 @@ dc.barChart("#bar-count")
 dc.barChart("#line-perf")
         .width(400)
         .height(250)
-        .margins({top: 10, right: 50, bottom: 30, left: 40})
+        .margins({top: 10, right: 40, bottom: 30, left: 50})
         .dimension(rsi2)
         .group(perfByRSI)
         .valueAccessor(function(p){return p.value.arith;})
@@ -112296,7 +112295,7 @@ dc.barChart("#line-perf")
         .y(d3.scale.linear().domain([-0.05, 0.05]))        
         .elasticY(true)
         .renderHorizontalGridLines(true)
-        .yAxis().tickFormat(d3.format(".1%"));
+        .yAxis().tickFormat(d3.format(".2%"));
         
 dc.barChart("#line-year")
         .width(400)
