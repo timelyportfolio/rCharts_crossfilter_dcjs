@@ -1,0 +1,24 @@
+Start working with how we might pair crossfilter and dc.js, separately or in combination, to work with R data.  Some good links are the [dc.js Nasdaq example]() and this [AAII stock picking analysis](http://www.acrodatics.com/) by [Lon Riesberg](https://twitter.com/lonriesberg).
+
+<script>
+```{r echo=F,warning=F,error=F,message=F,results='asis'}
+library(reshape2)
+library(plyr)
+library(quantmod)
+library(PerformanceAnalytics)
+library(rCharts)
+
+
+data(managers)
+managers.melt <- melt(data.frame(index(managers),managers),id.vars=1)
+colnames(managers.melt) <- c("date","manager","perf")
+managers.melt <- ddply(managers.melt,c("manager"),transform,cumul=cumprod(1+na.fill(perf,0)))
+cat(
+  "var data =
+  ",
+  toJSONArray(managers.melt)
+)
+
+```
+)
+</script>

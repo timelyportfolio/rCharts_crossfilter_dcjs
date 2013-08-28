@@ -1,0 +1,175 @@
+---
+title: Signal Analysis Experiment with dc.js & crossfilter
+author: Timely Portfolio
+github: {user: timelyportfolio, repo: rCharts_crossfilter_dcjs, branch: "gh-pages"}
+framework: bootstrap
+mode: selfcontained
+highlighter: prettify
+hitheme: twitter-bootstrap
+assets:
+  css:
+  - "http://fonts.googleapis.com/css?family=Raleway:300"
+  - "http://fonts.googleapis.com/css?family=Oxygen"
+  - "css/dc.css"
+  jshead:
+  - "http://d3js.org/d3.v3.js"
+  - "js/crossfilter.js"
+  - "js/dc.js"
+---
+  
+<style>
+body{
+  font-family: 'Oxygen', sans-serif;
+  font-size: 8px;
+  line-height: 15px;
+}
+
+h1,h2,h3,h4 {
+font-family: 'Raleway', sans-serif;
+}
+
+.container { width: 1200px; }
+
+h3 {
+background-color: #D4DAEC;
+  text-indent: 100px; 
+}
+
+h4 {
+text-indent: 100px;
+}
+</style>
+  
+<a href="https://github.com/timelyportfolio/rCharts_crossfilter_dcjs"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"></a>
+
+# Signal Analysis on S&P 500 using [dc.js](http://nickqizhu.github.io/dc.js/) & [crossfilter](http://square.github.io/crossfilter/)
+## With Help from [R](http://r-project.org) and [slidify](http://slidify.org)
+
+<div class = "row">
+  <div id = "bar-count" class = "span4"><h3>Signal Histogram</h3></div>
+  <div id = "line-perf" class = "span4"><h3>Avg Return By Signal</h3></div>
+  <div id = "line-year" class = "span4"><h3>Count By Year</h3></div>
+</div>
+
+<script>
+var spx = 
+```{r results ='asis', message=F, warning=F, error=F, echo=F}
+library(reshape2)
+library(plyr)
+library(quantmod)
+library(TTR)
+library(PerformanceAnalytics)
+library(rCharts)
+
+spx <- na.omit(getSymbols("^GSPC", from="1950-01-01", auto.assign=FALSE)[,4])
+
+spx.melt <- melt(data.frame(index(spx),coredata(spx)),id.vars=1)
+colnames(spx.melt) <- c("date","name","price")
+
+spx.melt <- ddply(
+  spx.melt,
+  c("name"),
+  transform,
+  rsi=RSI(price, n=14)
+)
+#lag our signal
+spx.melt$rsi <- as.vector(
+  lag(
+    as.xts(
+      spx.melt$rsi,
+      order.by=spx.melt$date
+    ),
+    k=1
+  )
+)
+
+spx.melt <- ddply(
+  spx.melt,
+  c("name"),
+  transform,
+  ret=ROC(price,n=1,type="discrete")
+)
+
+cat(
+  toJSONArray(spx.melt)
+)
+```
+
+spx.forEach(function(d){
+  d.dd=new Date(+d.date * 24 * 60 * 60 * 1000);
+});
+
+spxcf = crossfilter(spx);
+var rsi = spxcf.dimension(function(d){return Math.round(d.rsi);});
+var countByRSI = rsi.group().reduceCount();
+
+var rsi2 = spxcf.dimension(function(d){return Math.round(d.rsi);});
+var perfByRSI = rsi2.group().reduce(
+  function(p,v){
+    ++p.count;
+    p.sum += v.ret;
+    if(p.count!=0) {
+      p.arith = p.sum/p.count;
+      if (isNaN(p.arith)) p.arith = 0;
+    }
+    else {
+      p.arith=0;
+    }
+    return p;
+  },
+  function(p,v){
+    --p.count;
+    p.sum -= v.ret;
+    if(p.count!=0) {
+      p.arith = p.sum/p.count;
+      if (isNaN(p.arith)) p.arith = 0;
+    }
+    else {
+      p.arith=0;
+    }
+    return p;
+  },
+  function(){
+    return {count:0,sum:0,arith:0};//,sum:0,arith:0,geom:0};
+  }
+);
+
+var year = spxcf.dimension(function(d){return d3.time.year(d.dd);});
+var sumByYear = year.group().reduceCount(function(d){return d.rsi});
+
+dc.barChart("#bar-count")
+        .width(400)
+        .height(250)
+        .dimension(rsi)
+        .group(countByRSI)
+        //.valueAccessor(function(p){return p.value.count;})
+        .x(d3.scale.linear().domain([0, 100]))
+        .y(d3.scale.linear().domain([0, 500]))
+        .centerBar(true);
+        
+dc.barChart("#line-perf")
+        .width(400)
+        .height(250)
+        .margins({top: 10, right: 50, bottom: 30, left: 40})
+        .dimension(rsi2)
+        .group(perfByRSI)
+        .valueAccessor(function(p){return p.value.arith;})
+        .x(d3.scale.linear().domain([0,100]))
+        .y(d3.scale.linear().domain([-0.05, 0.05]))        
+        .elasticY(true)
+        .yAxis().tickFormat(d3.format(".1%"));
+        
+dc.barChart("#line-year")
+        .width(400)
+        .height(250)
+        .dimension(year)
+        .group(sumByYear)
+        .x(d3.time.scale().domain([Date.parse("1950-01-01"),Date.parse("2013-12-31")]))
+        .y(d3.scale.linear().domain([0,300]))
+        .xUnits(d3.time.years);
+        //.mouseZoomable(true);
+
+
+
+dc.renderAll();
+</script>

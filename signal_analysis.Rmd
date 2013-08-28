@@ -1,0 +1,37 @@
+# Signal Analysis with dc.js & crossfilter
+
+
+<script>
+var spx = 
+```{r results='asis', cache=F, message=F, warning=F, error=F, echo=F}
+library(reshape2)
+library(plyr)
+library(quantmod)
+library(TTR)
+library(PerformanceAnalytics)
+library(rCharts)
+
+spx <- na.omit(getSymbols("SP500", src="FRED", auto.assign=FALSE))
+
+spx.melt <- melt(data.frame(index(spx),coredata(spx)),id.vars=1)
+colnames(spx.melt) <- c("date","name","price")
+
+spx.melt <- ddply(
+  spx.melt,
+  c("name"),
+  transform,
+  rsi=RSI(price, n=14)
+)
+
+spx.melt <- ddply(
+  spx.melt,
+  c("name"),
+  transform,
+  ret=ROC(price,n=1,type="discrete")
+)
+
+cat(
+  toJSONArray(spx.melt)
+)
+```
+</script>

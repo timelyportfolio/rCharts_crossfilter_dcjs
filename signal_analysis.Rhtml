@@ -1,0 +1,150 @@
+<html>
+<meta charset="utf-8">
+<head>
+  <link rel="stylesheet" href="css/dc.css"/>
+
+  <script src="js/d3.v3.js"></script>
+  <script src="js/crossfilter.js"></script>
+  <script src="js/dc.js"></script>
+</head>
+
+<body>
+<h1>Signal Analysis with dc.js & crossfilter</h1>
+
+<div id = "bar-count"><p>Signal Histogram</p></div>
+<div id = "line-perf"><p>Average Return By Signal</p></div>
+<div id = "line-year"><p>Count By Year</p></div>
+
+<script>
+var spx = 
+<!--begin.rcode results ='asis', message=F, warning=F, error=F, echo=F
+library(reshape2)
+library(plyr)
+library(quantmod)
+library(TTR)
+library(PerformanceAnalytics)
+library(rCharts)
+
+spx <- na.omit(getSymbols("^GSPC", from="1950-01-01", auto.assign=FALSE)[,4])
+
+spx.melt <- melt(data.frame(index(spx),coredata(spx)),id.vars=1)
+colnames(spx.melt) <- c("date","name","price")
+
+spx.melt <- ddply(
+  spx.melt,
+  c("name"),
+  transform,
+  rsi=RSI(price, n=14)
+)
+#lag our signal
+spx.melt$rsi <- as.vector(
+  lag(
+    as.xts(
+      spx.melt$rsi,
+      order.by=spx.melt$date
+    ),
+    k=1
+  )
+)
+
+spx.melt <- ddply(
+  spx.melt,
+  c("name"),
+  transform,
+  ret=ROC(price,n=1,type="discrete")
+)
+
+cat(
+  toJSONArray(spx.melt)
+)
+end.rcode-->
+
+spx.forEach(function(d){
+  d.dd=new Date(+d.date * 24 * 60 * 60 * 1000);
+});
+
+spxcf = crossfilter(spx);
+var rsi = spxcf.dimension(function(d){return Math.round(d.rsi);});
+var countByRSI = rsi.group().reduceCount();
+
+var rsi2 = spxcf.dimension(function(d){return Math.round(d.rsi);});
+var perfByRSI = rsi2.group().reduce(
+  function(p,v){
+    ++p.count;
+    p.sum += v.ret;
+    if(p.count!=0) {
+      p.arith = p.sum/p.count;
+      if (isNaN(p.arith)) p.arith = 0;
+    }
+    else {
+      p.arith=0;
+    }
+    return p;
+  },
+  function(p,v){
+    --p.count;
+    p.sum -= v.ret;
+    if(p.count!=0) {
+      p.arith = p.sum/p.count;
+      if (isNaN(p.arith)) p.arith = 0;
+    }
+    else {
+      p.arith=0;
+    }
+    return p;
+  },
+  function(){
+    return {count:0,sum:0,arith:0};//,sum:0,arith:0,geom:0};
+  }
+);
+
+var year = spxcf.dimension(function(d){return d3.time.year(d.dd);});
+var sumByYear = year.group().reduceCount(function(d){return d.rsi});
+
+dc.barChart("#bar-count")
+        .width(500)
+        .height(250)
+        .dimension(rsi)
+        .group(countByRSI)
+        //.valueAccessor(function(p){return p.value.count;})
+        .x(d3.scale.linear().domain([0, 100]))
+        .y(d3.scale.linear().domain([0, 500]))
+        .centerBar(true);
+        
+dc.barChart("#line-perf")
+        .width(500)
+        .height(250)
+        .dimension(rsi2)
+        .group(perfByRSI)
+        .valueAccessor(function(p){return p.value.arith;})
+        .x(d3.scale.linear().domain([0,100]))
+        .y(d3.scale.linear().domain([-0.05, 0.05]))        
+        .elasticY(true)
+        //.xUnits(d3.time.hours)
+        //.renderArea(true);
+        //.xAxis().ticks(5);
+        
+        
+dc.barChart("#line-year")
+        .width(500)
+        .height(250)
+        .dimension(year)
+        .group(sumByYear)
+        .x(d3.time.scale().domain([Date.parse("1950-01-01"),Date.parse("2013-12-31")]))
+        .y(d3.scale.linear().domain([0,300]))
+        //.elasticY(true)
+        .xUnits(d3.time.years)
+        //.colors(["#a60000", "#ff0000", "#ff4040", "#ff7373", "#67e667", "#39e639", "#00cc00"])
+      //  .colorDomain([0, 300])
+      //  .colorAccessor(function (d) {
+      //      console.log(d.value);return d.value;
+      //  })
+        //.renderArea(true);
+        //.xAxis().ticks(5);
+
+
+dc.renderAll();
+</script>
+
+</body>
+</html>
