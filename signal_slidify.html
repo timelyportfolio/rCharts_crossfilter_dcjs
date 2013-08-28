@@ -81,10 +81,33 @@ text-indent: 100px;
 <h2>With Help from <a href="http://r-project.org">R</a> and <a href="http://slidify.org">slidify</a></h2>
 
 <div class = "row">
-  <div id = "bar-count" class = "span4"><h3>Signal Histogram</h3></div>
+  <div id = "bar-count" class = "span4">
+    <h3>Signal Histogram</h3><strong><span class="filter"></span></strong>
+  </div>
   <div id = "line-perf" class = "span4"><h3>Avg Return By Signal</h3></div>
   <div id = "line-year" class = "span4"><h3>Count By Year</h3></div>
 </div>
+
+<pre><code class="r">library(reshape2)
+library(plyr)
+library(quantmod)
+library(TTR)
+library(PerformanceAnalytics)
+library(rCharts)
+
+spx &lt;- na.omit(getSymbols(&quot;^GSPC&quot;, from = &quot;1950-01-01&quot;, auto.assign = FALSE)[, 
+    4])
+
+spx.melt &lt;- melt(data.frame(index(spx), coredata(spx)), id.vars = 1)
+colnames(spx.melt) &lt;- c(&quot;date&quot;, &quot;name&quot;, &quot;price&quot;)
+
+spx.melt &lt;- ddply(spx.melt, c(&quot;name&quot;), transform, rsi = RSI(price, n = 14))
+# lag our signal
+spx.melt$rsi &lt;- as.vector(lag(as.xts(spx.melt$rsi, order.by = spx.melt$date), 
+    k = 1))
+
+spx.melt &lt;- ddply(spx.melt, c(&quot;name&quot;), transform, ret = ROC(price, n = 1, type = &quot;discrete&quot;))
+</code></pre>
 
 <script>
 var spx = 
@@ -65512,7 +65535,6 @@ var spx =
 "ret": -0.004567 
 },
 {
- "date":   6283,
 "name": "GSPC.Close",
 "price": 288.23,
 "rsi": 64.532,
@@ -112254,6 +112276,13 @@ dc.barChart("#bar-count")
         //.valueAccessor(function(p){return p.value.count;})
         .x(d3.scale.linear().domain([0, 100]))
         .y(d3.scale.linear().domain([0, 500]))
+        .filterPrinter(function (filters) {
+            console.log(filters[0]);
+            var filter = filters[0], s = "RSI filter: ";
+            s += Math.round(filter[0]) + " -> " + Math.round(filter[1]);
+            console.log(s);
+            return s;
+        })        
         .centerBar(true);
         
 dc.barChart("#line-perf")
@@ -112266,6 +112295,7 @@ dc.barChart("#line-perf")
         .x(d3.scale.linear().domain([0,100]))
         .y(d3.scale.linear().domain([-0.05, 0.05]))        
         .elasticY(true)
+        .renderHorizontalGridLines(true)
         .yAxis().tickFormat(d3.format(".1%"));
         
 dc.barChart("#line-year")
@@ -112302,4 +112332,3 @@ dc.renderAll();
     prettyPrint();
   </script>
   <!-- End Google Prettify --> 
-  </html>

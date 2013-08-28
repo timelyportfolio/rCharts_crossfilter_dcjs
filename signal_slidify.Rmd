@@ -51,9 +51,8 @@ text-indent: 100px;
   <div id = "line-year" class = "span4"><h3>Count By Year</h3></div>
 </div>
 
-<script>
-var spx = 
-```{r results ='asis', message=F, warning=F, error=F, echo=F}
+
+```{r results ='asis', message=F, warning=F, error=F}
 library(reshape2)
 library(plyr)
 library(quantmod)
@@ -89,7 +88,11 @@ spx.melt <- ddply(
   transform,
   ret=ROC(price,n=1,type="discrete")
 )
+```
 
+<script>
+var spx = 
+```{r message=F,warning=F,error=F,results="asis",echo=F}
 cat(
   toJSONArray(spx.melt)
 )
@@ -157,6 +160,7 @@ dc.barChart("#line-perf")
         .x(d3.scale.linear().domain([0,100]))
         .y(d3.scale.linear().domain([-0.05, 0.05]))        
         .elasticY(true)
+        .renderHorizontalGridLines(true)
         .yAxis().tickFormat(d3.format(".1%"));
         
 dc.barChart("#line-year")

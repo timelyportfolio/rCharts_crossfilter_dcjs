@@ -51,6 +51,31 @@ text-indent: 100px;
   <div id = "line-year" class = "span4"><h3>Count By Year</h3></div>
 </div>
 
+
+
+```r
+library(reshape2)
+library(plyr)
+library(quantmod)
+library(TTR)
+library(PerformanceAnalytics)
+library(rCharts)
+
+spx <- na.omit(getSymbols("^GSPC", from = "1950-01-01", auto.assign = FALSE)[, 
+    4])
+
+spx.melt <- melt(data.frame(index(spx), coredata(spx)), id.vars = 1)
+colnames(spx.melt) <- c("date", "name", "price")
+
+spx.melt <- ddply(spx.melt, c("name"), transform, rsi = RSI(price, n = 14))
+# lag our signal
+spx.melt$rsi <- as.vector(lag(as.xts(spx.melt$rsi, order.by = spx.melt$date), 
+    k = 1))
+
+spx.melt <- ddply(spx.melt, c("name"), transform, ret = ROC(price, n = 1, type = "discrete"))
+```
+
+
 <script>
 var spx = 
 [
